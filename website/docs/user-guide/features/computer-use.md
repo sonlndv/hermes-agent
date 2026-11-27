@@ -428,6 +428,11 @@ of screenshot context, not ~600K.
   Windows UIA, ~5–15 ms on Linux AT-SPI vs direct HID posting. Not
   noticeable for agent-speed clicking; noticeable if you try to record
   a speed-run.
+- **Bot Desktop input is foreground.** The Bot Desktop's Xvnc server
+  cannot attach the virtual pointer the background rung needs, so input
+  actions there default to `delivery_mode: foreground` (and its approval
+  scope). The screen is the agent's own, so no one's focus moves. An
+  explicit `delivery_mode` still wins.
 - **No keyboard password entry.** `type` has hard-block patterns on
   command-shell payloads; for passwords, use the system's autofill
   (macOS Keychain / Windows Credential Manager / GNOME Keyring /

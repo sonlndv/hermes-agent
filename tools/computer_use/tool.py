@@ -284,7 +284,7 @@ def handle_computer_use(args: dict[str, Any], **kwargs) -> Any:
     session_id = str(kwargs.get("session_id") or "")  # approval-state / daemon-mode isolation key
     # Bot Desktop lease: while a human drives the screen every action, capture included, is refused.
     from tools.bot_desktop import lease as _bd_lease
-    from tools.bot_desktop.runtime import ensure_started_for_tool as _bd_ensure_started
+    from tools.bot_desktop.runtime import ensure_started_for_tool as _bd_ensure_started, published_env as _bd_env
     def _refused(e: Exception) -> str:
         return json.dumps({"ok": False, "action": action, "code": "human_has_control", "error": str(e)})
     try:
@@ -292,6 +292,11 @@ def handle_computer_use(args: dict[str, Any], **kwargs) -> Any:
     except _bd_lease.HumanHasControl as e:
         return _refused(e)
     _bd_ensure_started()  # headless gateway: bring the profile's screen up before the backend probes DISPLAY
+    # The Bot Desktop is Xvnc, which never attaches the uinput device the background rung waits for, so that rung
+    # times out (~5 s) on every input. It is also the agent's own screen: foreground focus disturbs nobody.
+    if (action in _ACTIONS and _ACTIONS[action].input and not args.get("delivery_mode")
+            and _bd_env().get("DISPLAY")):
+        args = {**args, "delivery_mode": "foreground"}
     if (err := _reject_unsafe(action, args)) is not None:
         return err
     scopes = ([action] if action in _ACTIONS and _ACTIONS[action].destructive else []) + (

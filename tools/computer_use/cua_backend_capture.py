@@ -35,14 +35,33 @@ _NO_DESKTOP_WINDOW_MSG = ("<no desktop/shell window found for app={app!r}; cua-d
                           "and exposes no whole-virtual-desktop or per-monitor capture. Call list_apps / "
                           "capture(app='<AppName>') to target a specific window instead. On Windows the taskbar is "
                           "'Shell_TrayWnd' and the desktop is 'Progman'.>")
-_NO_APP_MATCH_MSG = ("<no on-screen window matched app={app!r}; call list_apps to see available app names or bundle "
-                     "IDs (macOS reports localized names, e.g. '計算機' instead of 'Calculator'; some Linux/Qt apps "
-                     "only resolve via list_apps metadata)>")
+_NO_APP_MATCH_MSG = ("<no on-screen window matched app={app!r}; call list_windows and capture the intended "
+                     "window by its pid and window_id>")
 _NO_DESKTOP_IMAGE_MSG = ("<get_desktop_state returned no image; the driver may predate the desktop capture lane — "
                          "try capture(app='<AppName>') for a specific window>")
-_FULL_SCREEN_NOTE = ("full-screen capture has no interactable elements; to act on what you see, call "
-                     "capture(app='<AppName>') for that app's clickable element list, or capture(app='desktop') for "
-                     "the desktop shell (wallpaper icons / taskbar) with elements")
+
+def _desktop_target_note(out: dict[str, Any]) -> str:
+    """Use the windows accompanying these pixels. A separate enumeration can hang or see a later layout."""
+    lines = ["Full-screen pixels are read-only. Capture the intended window by pid and window_id, then "
+             "click within that window's screenshot. After a new window opens, select it from a fresh overview."]
+    for w in _windows_from_tool_result(out):
+        if not isinstance(w, dict) or w.get("is_on_screen") is False:
+            continue
+        pid, wid = _positive_int(w.get("pid")), _positive_int(w.get("window_id"))
+        if pid is None or wid is None:
+            continue
+        if len(lines) > 16:
+            lines.append("More windows: call list_windows.")
+            break
+        bounds = w.get("bounds")
+        geometry = ""
+        if isinstance(bounds, dict) and all(type(bounds.get(k)) is int for k in ("x", "y", "width", "height")):
+            geometry = f" at ({bounds['x']},{bounds['y']}) {bounds['width']}x{bounds['height']}"
+        lines.append(f"pid={pid} window_id={wid} {str(w.get('app_name') or '')[:80]!r} "
+                     f"{str(w.get('title') or '')[:100]!r}{geometry}")
+    if len(lines) == 1:
+        lines.append("Call list_windows for target IDs.")
+    return "\n".join(lines)
 
 def _linux_x11_active_window_id() -> Optional[int]:
     """Best-effort read of ``_NET_ACTIVE_WINDOW`` via xprop. Never raises."""
@@ -376,7 +395,7 @@ class _CaptureMixin:
                                                     int(sc.get("screenshot_height") or sc.get("screen_height") or 0))
         return CaptureResult(mode="vision", width=width, height=height, png_b64=png_b64, app="screen",
                              window_title="Full screen (composited)", png_bytes_len=png_bytes_len,
-                             image_mime_type=image_mime_type, note=_FULL_SCREEN_NOTE)
+                             image_mime_type=image_mime_type, note=_desktop_target_note(out))
 
     def list_apps(self) -> list[dict[str, Any]]:
         out = self._session.call_tool("list_apps", {"session": self._session_id})

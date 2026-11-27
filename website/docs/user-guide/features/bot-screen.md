@@ -180,6 +180,11 @@ waiting for you.
 Two viewers on one screen: the most recent **Take over** wins; the previous
 controller drops back to watching.
 
+A full-screen `computer_use` capture is read-only. When the driver supplies window
+IDs and bounds, Hermes includes them with that screenshot. Capture the intended
+`pid` and `window_id` before clicking. Use coordinates from the window capture,
+not the desktop overview. If an action opens another window, capture the overview again.
+
 ## Browser sessions that survive the handoff
 
 While the screen runs, the bot's browser tool and the dock's **Browser** icon are

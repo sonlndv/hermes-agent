@@ -66,7 +66,7 @@ class _FakeSession:
                 "data": "desktop state",
                 "images": images,
                 "image_mime_types": ["image/png"] if images else [],
-                "structuredContent": {"screen_width": 8, "screen_height": 8},
+                "structuredContent": {"screen_width": 8, "screen_height": 8, "windows": self._windows},
                 "isError": False,
             }
         if name == "list_windows":
@@ -119,6 +119,21 @@ class TestFullScreenLane:
         assert cap.elements == []
         assert cap.app == "screen"
 
+
+    def test_overview_identifies_visible_windows_without_another_lookup(self):
+        session = _FakeSession(windows=[
+            {"pid": 7, "window_id": 10, "title": "New Tab", "app_name": "Chromium-browser",
+             "bounds": {"x": 5, "y": 9, "width": 640, "height": 480}},
+            {"pid": 7, "window_id": 11, "title": "Hidden tab", "is_on_screen": False},
+        ])
+        backend = _make_backend(session)
+        overview = backend.capture(app="screen")
+        assert "pid=7 window_id=10" in overview.note and "New Tab" in overview.note
+        assert "(5,9) 640x480" in overview.note
+        assert "Hidden tab" not in overview.note
+        backend.capture(mode="vision", pid=7, window_id=10)
+        assert session.called("screenshot")[-1]["window_id"] == 10
+        assert not session.called("list_windows")
 
     def test_capture_scope_switched_and_restored(self):
         session = _FakeSession(capture_scope="window")

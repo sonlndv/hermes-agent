@@ -223,6 +223,23 @@ def test_dispatcher_threads_delivery_mode_to_backend(grant_computer_use_approval
         assert clicks and clicks[-1].get("delivery_mode") == "foreground"
 
 
+@pytest.mark.parametrize(("bot_desktop_env", "expected"), [({"DISPLAY": ":20"}, "foreground"), ({}, None)])
+def test_bot_desktop_input_defaults_to_foreground(grant_computer_use_approvals, bot_desktop_env, expected):
+    """The Bot Desktop's Xvnc cannot run the background rung, so input there goes foreground unless the model
+    asked for a mode; anywhere else the default stays background (no flag sent)."""
+    from tools.bot_desktop import runtime
+    from tools.computer_use import tool as cu
+    with patch.object(cu, "_new_backend", lambda mode: NoopBackend()), \
+            patch.object(runtime, "published_env", lambda: bot_desktop_env), \
+            patch.object(runtime, "touch_activity", lambda: None):
+        reset_backend()
+        be = cu._get_backend()
+        cu.handle_computer_use({"action": "click", "element": 5})
+        cu.handle_computer_use({"action": "key", "keys": "escape", "delivery_mode": "background"})
+        sent = {name: kw.get("delivery_mode") for (name, kw) in be.calls if name in ("click", "key")}  # type: ignore[attr-defined]
+        assert sent == {"click": expected, "key": "background"}
+
+
 # ---------------------------------------------------------------------------
 # Phase C — foreground approval scoping (action + delivery_mode + session)
 # ---------------------------------------------------------------------------

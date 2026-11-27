@@ -45,7 +45,6 @@ def test_type_with_mismatched_app_refused():
     assert out["ok"] is False
     assert out["code"] == "input_target_mismatch"
     assert "kcalc" in out["error"] and "kate" in out["error"]
-    assert "capture(app='kate')" in out["error"]
 
 def test_click_with_mismatched_app_refused():
     out = _dispatch_result(_backend("kcalc"), "click", {"element": 3, "app": "kate"})

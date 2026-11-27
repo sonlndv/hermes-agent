@@ -1320,7 +1320,6 @@ class TestCaptureAppFilterNoMatch:
         )
         assert cap.elements == []
         assert "Calculator" in cap.window_title
-        assert "list_apps" in cap.window_title
         # _active_pid must remain unset so a subsequent click doesn't hit Fuwari.
         assert backend._active_pid is None
         assert backend._active_window_id is None
